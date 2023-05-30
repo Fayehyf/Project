@@ -15,6 +15,11 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
+    void setDrawFlag(bool flag); // 设置绘制标志位
+    bool getDrawFlag() const;    // 获取绘制标志位
+
+
+public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
     State *currentState;
@@ -22,6 +27,7 @@ public:
     void setPainter(QPainter *painter);
     void addShape(const QRect& rect);  // 添加矩形到 shapes 成员变量中
     QVector<QRect> shapes;
+    bool drawFlag; // 是否正在绘制矩形的标志位
 
 protected:
     void paintEvent(QPaintEvent *);
@@ -96,11 +102,19 @@ class PolygonState : public State
 {
 private:
     int edgeNum;
+    QPoint topLeft;
 public:
     PolygonState() :edgeNum(0) {}
-    void mousePressEvent(QMouseEvent *event, MainWindow *window);
-    void paintEvent(QPaintEvent *event, QPainter &painter, std::vector<QPoint> points, QPoint topLeft);
+    void mousePressEvent(QMouseEvent *event, MainWindow *window);//按下
+    void paintEvent(QPaintEvent *event, QPainter &painter, std::vector<QPoint> points, QPoint topLeft);//绘制
+    //int crossProduct(QPoint p1, QPoint p2, QPoint p3);
+    //bool isConvexPolygon(const std::vector<QPoint>& points);
+    //void mouseMoveEvent(QMouseEvent *event);
+    //void mouseReleaseEvent(QMouseEvent *event);
+    //void mouseDoubleClickEvent(QMouseEvent *event);
+
 };
+
 
 class LineState : public State
 {

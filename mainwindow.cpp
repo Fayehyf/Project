@@ -8,7 +8,7 @@
 #include<QDebug>
 #include <QMouseEvent>
 #include <QPainter>
-#include <algorithm>
+
 // define canvas size
 const int CANVAS_WIDTH = 800;
 const int CANVAS_HEIGHT = 600;
@@ -35,10 +35,6 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::addShape(const QRect& rect)
-{
-    shapes.push_back(rect);
-}
 
 void MainWindow::paintEvent(QPaintEvent *)
 {
@@ -309,6 +305,12 @@ void CircleState::paintEvent(QPaintEvent *event, QPainter &painter, std::vector<
     }
 }
 
+
+
+
+
+
+
 void RectangleState::mousePressEvent(QMouseEvent *event, MainWindow *window)
 {
     if (event->button() == Qt::LeftButton && event->type() == QEvent::MouseButtonPress)
@@ -319,15 +321,14 @@ void RectangleState::mousePressEvent(QMouseEvent *event, MainWindow *window)
         }
         else
         {
-            int width = abs(event->pos().x() - window->points[0].x());
-            int height = abs(event->pos().y() - window->points[0].y());
-            QPoint bottomRight = QPoint((topLeft.x() + width) > topLeft.x() ? (topLeft.x() + width) : topLeft.x(),
-                                         (topLeft.y() + height) > topLeft.y() ? (topLeft.y() + height) : topLeft.y());
+            QPoint p1 = window->points[0];
+            QPoint p2 = event->pos();
+            QRect rect(p1, p2);
 
-            QRect rect(window->points[0],bottomRight);//构造矩形
             QPainter painter(window);
-            painter.drawRect(rect);//绘制矩形
-            window->addShape(rect);   // 存储矩形到 shapes 变量中
+            painter.drawRect(rect);
+
+            window->shapes.push_back(rect);
             window->points.clear();
         }
     }
@@ -338,15 +339,16 @@ void RectangleState::paintEvent(QPaintEvent *event, QPainter &painter, std::vect
     Q_UNUSED(event);
     Q_UNUSED(points);
 
-    if (!topLeft.isNull())//如果存在矩形左上角的点，则绘制预览矩形
+    if (!topLeft.isNull())
     {
-        int width = abs(currentPos.x() - topLeft.x());
-        int height = abs(currentPos.y() - topLeft.y());
-        QPoint bottomRight = QPoint(std::max(topLeft.x() + width, topLeft.x()), std::max(topLeft.y() + height, topLeft.y())); // 计算矩形右下角的点
-        QRect rect(topLeft, bottomRight); // 构造矩形
-        painter.drawRect(rect); // 绘制矩形
-    }
+        int x1 = std::min(topLeft.x(), currentPos.x());
+        int y1 = std::min(topLeft.y(), currentPos.y());
+        int x2 = std::max(topLeft.x(), currentPos.x());
+        int y2 = std::max(topLeft.y(), currentPos.y());
 
+        QRect rect(x1, y1, x2 - x1, y2 - y1);
+        painter.drawRect(rect);
+    }
 }
 
 void RectangleState::mouseMoveEvent(QMouseEvent *event, MainWindow *window)
@@ -361,44 +363,57 @@ void RectangleState::mouseReleaseEvent(QMouseEvent *event, MainWindow *window)
     Q_UNUSED(window);
 }
 
-void PolygonState::mousePressEvent(QMouseEvent *event, MainWindow *window)
+
+
+
+
+void PolygonState::mousePressEvent(QMouseEvent *event, MainWindow *window)//按下
 {
-    if (event->button() == Qt::LeftButton && event->type() == QEvent::MouseButtonPress)
+    if (event->button() == Qt::LeftButton)
     {
-        if (window->points.size() == 0)
+        if (edgeNum == 0)
         {
-            window->topLeft = event->pos();
+            //更新左上角顶点和边数
+            topLeft = event->pos();
+            edgeNum++;
         }
-
-        // each click adds a vertex and connects it to the previous point with a line segment
-        window->points.push_back(event->pos());
-        QPainter painter(window);
-        painter.drawLine(window->points.back(), window->points[window->points.size() - 2]);
-
-
-        // close the polygon when you press the middle or right buttons
-        if (event->button() == Qt::MiddleButton || event->button() == Qt::RightButton)
+        else
         {
-            // close polygon
-            painter.drawLine(window->points.back(), window->topLeft);
-            window->points.push_back(window->topLeft);
-            edgeNum = window->points.size() - 1;
-            window->topLeft = QPoint(0, 0);
+            //存储多边形的点，并更新边数
+            QPoint point(event->pos().x(), event->pos().y());
+            window->points.push_back(point);
+            edgeNum++;
         }
     }
 }
-void PolygonState::paintEvent(QPaintEvent *event, QPainter &painter, std::vector<QPoint> points, QPoint topLeft)
+void PolygonState::paintEvent(QPaintEvent *event, QPainter &painter, std::vector<QPoint> points, QPoint /*topLeft*/)//绘制
 {
-    if (edgeNum > 0)
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(Qt::black, 2, Qt::SolidLine));
+
+    //绘制已经保存的点与顶点之间的连线，准备绘制新线段
+    for (unsigned int i = 1; i < points.size(); i++)
     {
-        QPointF pointf[100];
-        for (int i = 0; i < edgeNum; i++)
-        {
-            pointf[i] = points[i];
-        }
-        painter.drawPolygon(pointf, edgeNum);
+        painter.drawLine(points[i - 1], points[i]);
+    }
+
+    //绘制新的线段
+    if (edgeNum > 1)
+    {
+        painter.drawLine(points.back(), QPoint(topLeft.x(), topLeft.y()));
+    }
+
+    //如果已经存储了三个点，则将最后一个点连接到第一个点以形成完整的多边形
+    if (edgeNum > 2)
+    {
+        painter.drawLine(points.back(), points.front());
     }
 }
+
+
+
+
+
 
 
 void LineState::mousePressEvent(QMouseEvent *event, MainWindow *window)
