@@ -51,8 +51,19 @@
     <property name="title">
      <string>属性设置</string>
     </property>
+    <widget class="QMenu" name="menuStyle">
+     <property name="title">
+      <string>Style</string>
+     </property>
+     <addaction name="actionDotLine"/>
+     <addaction name="actionDashLine"/>
+     <addaction name="actionDashDotLine"/>
+     <addaction name="actionDashDotDotLine"/>
+     <addaction name="actionCustomDashLine"/>
+     <addaction name="actionSolidLine"/>
+    </widget>
     <addaction name="actionColor"/>
-    <addaction name="actionStyle"/>
+    <addaction name="menuStyle"/>
    </widget>
    <widget class="QMenu" name="menu_5">
     <property name="geometry">
@@ -149,11 +160,6 @@
     <string>Color</string>
    </property>
   </action>
-  <action name="actionStyle">
-   <property name="text">
-    <string>Style</string>
-   </property>
-  </action>
   <action name="actionClear_All">
    <property name="text">
     <string>Clear All</string>
@@ -182,6 +188,36 @@
   <action name="actionDelete_2">
    <property name="text">
     <string>Delete</string>
+   </property>
+  </action>
+  <action name="actionDotLine">
+   <property name="text">
+    <string>DotLine</string>
+   </property>
+  </action>
+  <action name="actionDashLine">
+   <property name="text">
+    <string>DashLine</string>
+   </property>
+  </action>
+  <action name="actionDashDotLine">
+   <property name="text">
+    <string>DashDotLine</string>
+   </property>
+  </action>
+  <action name="actionDashDotDotLine">
+   <property name="text">
+    <string>DashDotDotLine</string>
+   </property>
+  </action>
+  <action name="actionCustomDashLine">
+   <property name="text">
+    <string>CustomDashLine</string>
+   </property>
+  </action>
+  <action name="actionSolidLine">
+   <property name="text">
+    <string>SolidLine</string>
    </property>
   </action>
  </widget>

@@ -8,6 +8,7 @@
 #include<QDebug>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QColorDialog>
 
 // define canvas size
 const int CANVAS_WIDTH = 800;
@@ -26,8 +27,6 @@ MainWindow::MainWindow(QWidget *parent)
     setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
     isSelecting = false;
 
-
-
 }
 
 MainWindow::~MainWindow()
@@ -40,9 +39,9 @@ void MainWindow::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
     painter.begin(this);
-    QPen pen(Qt::red);
-    pen.setWidth(5);
-    painter.setPen(pen);
+    QPen pen(penColor);
+    pen.setWidth(3);
+    painter.setPen(pen);//设置画笔
 
     // draw all saved points
     for (int i = 0; i < points.size(); i++)
@@ -63,9 +62,7 @@ void MainWindow::paintEvent(QPaintEvent *)
         pen.setStyle(Qt::DashLine);
         painter.setPen(pen);
         painter.drawRect(selectionRect);
-
     }
-
     painter.end();
 }
 
@@ -125,6 +122,11 @@ void MainWindow::on_actionPolygon_triggered()
 void MainWindow::on_actionLine_triggered()
 {
     currentState = new LineState();
+}
+
+void MainWindow::on_actionSector_triggered()
+{
+    currentState = new SectorState();
 }
 
 void MainWindow::on_actionClear_All_triggered()
@@ -208,11 +210,62 @@ void MainWindow::on_actionTranslation_2_triggered()
 
 void MainWindow::on_actionZoom_2_triggered()
 {
+
 }
 
 void MainWindow::on_actionDelete_2_triggered()
 {
+
 }
+
+void MainWindow::on_actionColor_triggered()
+{
+    QColor color = QColorDialog::getColor(Qt::red, this,tr("颜色对话框"),QColorDialog::ShowAlphaChannel);
+    if(color.isValid())
+    {
+        penColor = color;
+    }
+}
+
+void MainWindow::on_actionDashLine_triggered()
+{
+    pen.setStyle(Qt::DashLine);
+    update();
+}
+
+
+void MainWindow::on_actionDotLine_triggered()
+{
+    pen.setStyle(Qt::DotLine);
+    update();
+
+}
+void MainWindow::on_actionDashDotLine_triggered()
+{
+    pen.setStyle(Qt::DashDotLine);
+    update();
+}
+
+void MainWindow::on_actionDashDotDotLine_triggered()
+{
+    pen.setStyle(Qt::DashDotDotLine);
+    update();
+}
+
+void MainWindow::on_actionCustomDashLine_triggered()
+{
+    pen.setStyle(Qt::CustomDashLine);
+    update();
+}
+
+void MainWindow::on_actionSolidLine_triggered()
+{
+    pen.setStyle(Qt::SolidLine);
+    update();
+}
+
+
+
 
 void PointState::mousePressEvent(QMouseEvent *event, MainWindow *window)
 {
@@ -306,11 +359,6 @@ void CircleState::paintEvent(QPaintEvent *event, QPainter &painter, std::vector<
 }
 
 
-
-
-
-
-
 void RectangleState::mousePressEvent(QMouseEvent *event, MainWindow *window)
 {
     if (event->button() == Qt::LeftButton && event->type() == QEvent::MouseButtonPress)
@@ -363,10 +411,6 @@ void RectangleState::mouseReleaseEvent(QMouseEvent *event, MainWindow *window)
     Q_UNUSED(window);
 }
 
-
-
-
-
 void PolygonState::mousePressEvent(QMouseEvent *event, MainWindow *window)//按下
 {
     if (event->button() == Qt::LeftButton)
@@ -388,8 +432,7 @@ void PolygonState::mousePressEvent(QMouseEvent *event, MainWindow *window)//按�
 }
 void PolygonState::paintEvent(QPaintEvent *event, QPainter &painter, std::vector<QPoint> points, QPoint /*topLeft*/)//绘制
 {
-    painter.setBrush(Qt::NoBrush);
-    painter.setPen(QPen(Qt::black, 2, Qt::SolidLine));
+
 
     //绘制已经保存的点与顶点之间的连线，准备绘制新线段
     for (unsigned int i = 1; i < points.size(); i++)
@@ -409,12 +452,6 @@ void PolygonState::paintEvent(QPaintEvent *event, QPainter &painter, std::vector
         painter.drawLine(points.back(), points.front());
     }
 }
-
-
-
-
-
-
 
 void LineState::mousePressEvent(QMouseEvent *event, MainWindow *window)
 {
@@ -462,18 +499,67 @@ void LineState::paintEvent(QPaintEvent *event, QPainter &painter, std::vector<QP
 
 }
 
+void SectorState::mousePressEvent(QMouseEvent *event, MainWindow *window)
+{
+    if (event->button() == Qt::LeftButton)
+    {
+        // 记录圆心坐标
+        centerPoint = event->pos();
+        // 更新状态
+        window->currentState = this;
+    }
+}
 
+void SectorState::paintEvent(QPaintEvent *, QPainter &painter, std::vector<QPoint> points, QPoint)
+{
+    // 先绘制已保存点和线段
+    for (unsigned int i = 1; i < points.size(); i++)
+    {
+        painter.drawLine(points[i - 1], points[i]);
+    }
 
+    // 绘制圆心
+    painter.drawPoint(centerPoint);
 
+    // 绘制圆弧
+    if (spanAngle != 0)
+    {
+        QRectF rectangle(centerPoint.x() - radius, centerPoint.y() - radius, radius * 2, radius * 2);
+        painter.drawPie(rectangle, startAngle, spanAngle);
+    }
+}
 
+void SectorState::mouseMoveEvent(QMouseEvent *event, MainWindow *window)
+{
+    if (window->currentState == this)
+    {
+        // 计算半径和扇形角度
+        qreal dx = event->pos().x() - centerPoint.x();
+        qreal dy = event->pos().y() - centerPoint.y();
+        radius = sqrt(dx * dx + dy * dy);
+        startAngle = std::atan2(dy, dx) * 180 / M_PI;
+        spanAngle = 90; // 暂时设置为 90 度
+        //将当前点加入points
+        QPoint currentPoint = event->pos();
+        points.push_back(currentPoint);
+        // 重绘窗口
+        window->update();
+    }
+}
 
-
-
-
-
-
-
-
-
-
+void SectorState::mouseReleaseEvent(QMouseEvent *, MainWindow *window)
+{
+    // 更新状态，保存当前的圆弧
+    window->currentState = new SelectState();
+    //根据起始点，结束点和圆心点来计算扇形的三个角度参数
+    QPoint endPoint = points.back();
+    qreal dx = endPoint.x()-centerPoint.x();
+    qreal dy = endPoint.y()-centerPoint.y();
+    qreal endAngle = std::atan2(dy,dx)*180/M_PI;
+    if(span<0)
+    {
+        span+=360;
+    }
+    window->shapes.push_back(new ArcShape(centerPoint, radius, startAngle, spanAngle));
+}
 

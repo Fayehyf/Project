@@ -18,7 +18,6 @@ public:
     void setDrawFlag(bool flag); // 设置绘制标志位
     bool getDrawFlag() const;    // 获取绘制标志位
 
-
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
@@ -47,15 +46,23 @@ private slots:
     void on_actionTranslation_2_triggered();
     void on_actionZoom_2_triggered();
     void on_actionDelete_2_triggered();
+    void on_actionColor_triggered();
+    void on_actionDotLine_triggered();
+    void on_actionDashLine_triggered();
+    void on_actionDashDotLine_triggered();
+    void on_actionDashDotDotLine_triggered();
+    void on_actionCustomDashLine_triggered();
+    void on_actionSolidLine_triggered();
+    void on_actionSector_triggered();
 
 public:
     Ui::MainWindow *ui;
     std::vector<QPoint> points;
     QPoint topLeft;
-
-
     bool isSelecting;//whether the box is being selected
     QRect selectionRect;//the rectangle used to store the box selection
+    QColor penColor;//设置画笔颜色
+    QPen pen;
 };
 
 class State
@@ -107,11 +114,6 @@ public:
     PolygonState() :edgeNum(0) {}
     void mousePressEvent(QMouseEvent *event, MainWindow *window);//按下
     void paintEvent(QPaintEvent *event, QPainter &painter, std::vector<QPoint> points, QPoint topLeft);//绘制
-    //int crossProduct(QPoint p1, QPoint p2, QPoint p3);
-    //bool isConvexPolygon(const std::vector<QPoint>& points);
-    //void mouseMoveEvent(QMouseEvent *event);
-    //void mouseReleaseEvent(QMouseEvent *event);
-    //void mouseDoubleClickEvent(QMouseEvent *event);
 
 };
 
@@ -121,6 +123,22 @@ class LineState : public State
 public:
     void mousePressEvent(QMouseEvent *event, MainWindow *window);
     void paintEvent(QPaintEvent *event, QPainter &painter, std::vector<QPoint> points, QPoint topLeft);
+};
+
+class SectorState : public State
+{
+private:
+    QPoint centerPoint;
+    qreal radius;
+    int startAngle;
+    int spanAngle;
+
+public:
+    SectorState() : startAngle(0), spanAngle(0) {}
+    void mousePressEvent(QMouseEvent *event, MainWindow *window); // 按下
+    void paintEvent(QPaintEvent *event, QPainter &painter, std::vector<QPoint> points, QPoint topLeft); // 绘制
+    void mouseMoveEvent(QMouseEvent *event, MainWindow *window);
+    void mouseReleaseEvent(QMouseEvent *, MainWindow *window);
 };
 
 #endif // MAINWINDOW_H
