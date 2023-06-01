@@ -3,13 +3,80 @@
 #include <QMainWindow>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QAbstractGraphicsShapeItem>
 #include <vector>
+#include <QList>
 #include <algorithm>
-
+#include <QGraphicsScene>
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 class State;
+// 自定义功能图元 - 点
+class BPointItem : public QObject, public QAbstractGraphicsShapeItem
+{
+    Q_OBJECT
+
+public:
+    enum PointType {
+        Center = 0, // 中心点
+        Edge,       // 边缘点（可拖动改变图形的形状、大小）
+        Special     // 特殊功能点
+    };
+
+    BPointItem(QAbstractGraphicsShapeItem* parent, QPointF p, PointType type);
+
+    QPointF getPoint() { return m_point; }
+    void setPoint(QPointF p) { m_point = p; }
+
+protected:
+    virtual QRectF boundingRect() const override;
+
+    virtual void paint(QPainter *painter,
+                       const QStyleOptionGraphicsItem *option,
+                       QWidget *widget) override;
+
+    virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
+
+public:
+    QPointF m_point;
+    PointType m_type;
+};
+
+// 存放点的容器
+class BPointItemList: public QList<BPointItem *>
+{
+public:
+    void setRandColor();
+    void setColor(const QColor color);
+    void setVisible(bool visible);
+};
+
+
+
+class BQGraphicsScene : public QGraphicsScene
+{
+    Q_OBJECT
+
+public:
+    BQGraphicsScene(QObject *parent = nullptr);
+
+    void startCreate();
+    void saveItemToConfig();
+    void loadItemToScene();
+
+protected:
+    virtual void mousePressEvent(QGraphicsSceneMouseEvent *event);
+
+signals:
+    void updatePoint(QPointF p, QList<QPointF> list, bool isCenter);
+    void createFinished();
+
+protected:
+    QList<QPointF> m_list;
+    bool is_creating_BPolygon;
+};
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -63,6 +130,10 @@ public:
     QRect selectionRect;//the rectangle used to store the box selection
     QColor penColor;//设置画笔颜色
     QPen pen;
+    QPainter painter;
+    BQGraphicsScene m_scene;
+
+
 };
 
 class State
@@ -70,7 +141,6 @@ class State
 public:
     enum Type
     {
-
         None,
         Drawing,
         Moving
@@ -78,6 +148,17 @@ public:
     virtual void mousePressEvent(QMouseEvent *event, MainWindow *window) = 0;
     virtual void paintEvent(QPaintEvent *event, QPainter &painter, std::vector<QPoint> points, QPoint topLeft)=0;
 
+};
+
+class ArcShape
+{
+public:
+    QPoint center;
+    qreal radius;
+    int startAngle;
+    int spanAngle;
+
+    ArcShape(QPoint c, qreal r, int sa, int ea);
 };
 
 class PointState : public State
@@ -117,7 +198,6 @@ public:
 
 };
 
-
 class LineState : public State
 {
 public:
@@ -125,21 +205,32 @@ public:
     void paintEvent(QPaintEvent *event, QPainter &painter, std::vector<QPoint> points, QPoint topLeft);
 };
 
+
+
+
+
+
 class SectorState : public State
 {
-private:
-    QPoint centerPoint;
-    qreal radius;
-    int startAngle;
-    int spanAngle;
-
 public:
-    SectorState() : startAngle(0), spanAngle(0) {}
-    void mousePressEvent(QMouseEvent *event, MainWindow *window); // 按下
-    void paintEvent(QPaintEvent *event, QPainter &painter, std::vector<QPoint> points, QPoint topLeft); // 绘制
-    void mouseMoveEvent(QMouseEvent *event, MainWindow *window);
-    void mouseReleaseEvent(QMouseEvent *, MainWindow *window);
+    SectorState(qreal x, qreal y, qreal radius, qreal angle);
+    void updateAngle();
+protected:
+    void mousePressEvent(QMouseEvent *event, MainWindow *window);
+    void paintEvent(QPaintEvent *event, QPainter &painter, std::vector<QPoint> points, QPoint topLeft);
+    void paint(QPainter *painter,QWidget *widget);
+public:
+    qreal m_angle;
+    qreal m_radius;
+    QPointF m_center;
+    QPointF m_edge;
+    BPointItemList m_pointList;
+    QPen pen;
+    QBrush brush;
+
 };
+
+
 
 #endif // MAINWINDOW_H
 

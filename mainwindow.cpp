@@ -9,7 +9,9 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QColorDialog>
-
+#include<QPen>
+#include<QBrush>
+#define PI 3.1415926
 // define canvas size
 const int CANVAS_WIDTH = 800;
 const int CANVAS_HEIGHT = 600;
@@ -26,6 +28,7 @@ MainWindow::MainWindow(QWidget *parent)
     setMinimumSize(CANVAS_WIDTH, CANVAS_HEIGHT);
     setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
     isSelecting = false;
+    drawFlag = false;//初始化
 
 }
 
@@ -72,6 +75,7 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
     {
         currentState->mousePressEvent(event, this);
     }
+
     if(event->button()==Qt::LeftButton&&event->type()==QEvent::MouseButtonPress)
     {
         isSelecting=true;
@@ -126,7 +130,8 @@ void MainWindow::on_actionLine_triggered()
 
 void MainWindow::on_actionSector_triggered()
 {
-    currentState = new SectorState();
+    SectorState  *m_Sector  = new SectorState(0, 0, 80, 30);
+    m_scene.addItem(m_Sector);
 }
 
 void MainWindow::on_actionClear_All_triggered()
@@ -229,7 +234,11 @@ void MainWindow::on_actionColor_triggered()
 
 void MainWindow::on_actionDashLine_triggered()
 {
-    pen.setStyle(Qt::DashLine);
+    QBrush brush(QColor(0,0,0,100));
+    painter.setBrush(brush);
+    QPen pen1;
+    pen1.setStyle(Qt::DashLine);
+    painter.setPen(pen1);
     update();
 }
 
@@ -264,8 +273,14 @@ void MainWindow::on_actionSolidLine_triggered()
     update();
 }
 
-
-
+ArcShape::ArcShape(QPoint c, qreal r, int sa, int ea)
+    : center(c), radius(r), startAngle(sa), spanAngle(ea)
+{
+}
+void SectorState ::mousePressEvent(QMouseEvent *, MainWindow *)
+{}
+void SectorState ::paintEvent(QPaintEvent *, QPainter &, std::vector<QPoint>, QPoint)
+{}
 
 void PointState::mousePressEvent(QMouseEvent *event, MainWindow *window)
 {
@@ -499,67 +514,68 @@ void LineState::paintEvent(QPaintEvent *event, QPainter &painter, std::vector<QP
 
 }
 
-void SectorState::mousePressEvent(QMouseEvent *event, MainWindow *window)
+
+SectorState::SectorState(qreal x, qreal y, qreal radius, qreal angle):m_angle(angle)
 {
-    if (event->button() == Qt::LeftButton)
+    if ( (angle >= 0 && angle < 90) || (angle >= 270 && angle < 360) )
     {
-        // 记录圆心坐标
-        centerPoint = event->pos();
-        // 更新状态
-        window->currentState = this;
+        m_edge.setX( m_center.x() + radius * cos(angle/180*PI) );
+        m_edge.setY( m_center.y() + radius * sin(angle/180*PI) * (-1) );
     }
+    else if ( (angle >= 90 && angle < 270) )
+    {
+        m_edge.setY( m_center.y() + radius * sin(angle/180*PI) * (-1) );
+        m_edge.setX( m_center.x() + radius * cos(angle/180*PI) );
+    }
+
+    m_pointList.at(0)->setPoint(m_edge);
+    m_radius = radius;
+
+}
+void SectorState::updateAngle()
+{
+    qreal dx = m_edge.x() - m_center.x();
+    qreal dy = m_edge.y() - m_center.y();
+
+    if ( dx >= 0 && dy < 0 )
+    {
+        m_angle = atan2( (-1)*(dy), dx ) *180/PI;
+    }
+    else if ( dx < 0 && dy < 0 )
+    {
+        m_angle = atan2( (-1)*dy, dx ) *180/PI;
+    }
+    else if ( dx < 0 && dy >= 0 )
+    {
+        m_angle = 360 + atan2( (-1)*dy, dx ) *180/PI;
+    }
+    else if ( dx >= 0 && dy >= 0 )
+    {
+        m_angle = 360 - atan2( dy, dx ) *180/PI;
+    }
+
+}
+void SectorState::paint(QPainter *painter,QWidget *widget)
+{
+    //Q_UNUSED(option);
+    //Q_UNUSED(widget);
+    painter->setPen(this->pen());
+    painter->setBrush(this->brush());
+
+    QRectF ret(m_center.x() - m_radius, m_center.y() - m_radius, m_radius * 2, m_radius * 2);
+    painter->drawPie(ret, 16*0, 16*(m_angle));
 }
 
-void SectorState::paintEvent(QPaintEvent *, QPainter &painter, std::vector<QPoint> points, QPoint)
-{
-    // 先绘制已保存点和线段
-    for (unsigned int i = 1; i < points.size(); i++)
-    {
-        painter.drawLine(points[i - 1], points[i]);
-    }
 
-    // 绘制圆心
-    painter.drawPoint(centerPoint);
 
-    // 绘制圆弧
-    if (spanAngle != 0)
-    {
-        QRectF rectangle(centerPoint.x() - radius, centerPoint.y() - radius, radius * 2, radius * 2);
-        painter.drawPie(rectangle, startAngle, spanAngle);
-    }
-}
 
-void SectorState::mouseMoveEvent(QMouseEvent *event, MainWindow *window)
-{
-    if (window->currentState == this)
-    {
-        // 计算半径和扇形角度
-        qreal dx = event->pos().x() - centerPoint.x();
-        qreal dy = event->pos().y() - centerPoint.y();
-        radius = sqrt(dx * dx + dy * dy);
-        startAngle = std::atan2(dy, dx) * 180 / M_PI;
-        spanAngle = 90; // 暂时设置为 90 度
-        //将当前点加入points
-        QPoint currentPoint = event->pos();
-        points.push_back(currentPoint);
-        // 重绘窗口
-        window->update();
-    }
-}
 
-void SectorState::mouseReleaseEvent(QMouseEvent *, MainWindow *window)
-{
-    // 更新状态，保存当前的圆弧
-    window->currentState = new SelectState();
-    //根据起始点，结束点和圆心点来计算扇形的三个角度参数
-    QPoint endPoint = points.back();
-    qreal dx = endPoint.x()-centerPoint.x();
-    qreal dy = endPoint.y()-centerPoint.y();
-    qreal endAngle = std::atan2(dy,dx)*180/M_PI;
-    if(span<0)
-    {
-        span+=360;
-    }
-    window->shapes.push_back(new ArcShape(centerPoint, radius, startAngle, spanAngle));
-}
+
+
+
+
+
+
+
+
 
