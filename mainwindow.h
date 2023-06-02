@@ -205,11 +205,6 @@ public:
     void paintEvent(QPaintEvent *event, QPainter &painter, std::vector<QPoint> points, QPoint topLeft);
 };
 
-
-
-
-
-
 class SectorState : public State
 {
 public:
@@ -229,8 +224,6 @@ public:
     QBrush brush;
 
 };
-
-
 
 #endif // MAINWINDOW_H
 
